@@ -301,7 +301,9 @@ fun DrawingApp(paddingValues: PaddingValues) {
 
                     val lastPath = pathsUndone.last().first
                     val lastPathProperty = pathsUndone.last().second
-                    pathsUndone.removeLast()
+                    if (pathsUndone.isNotEmpty()) {
+                        pathsUndone.removeAt(pathsUndone.lastIndex)
+                    }
                     paths.add(Pair(lastPath, lastPathProperty))
                 }
             },

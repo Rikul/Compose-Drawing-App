@@ -3,62 +3,98 @@ package com.smarttoolfactory.composedrawingapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.core.view.WindowCompat
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Expand
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.filled.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.google.accompanist.insets.ProvideWindowInsets
+import com.google.accompanist.insets.navigationBarsPadding
+import com.google.accompanist.insets.statusBarsPadding
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.smarttoolfactory.composedrawingapp.ui.theme.ComposeDrawingAppTheme
-import com.smarttoolfactory.composedrawingapp.ui.theme.backgroundColor
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             ComposeDrawingAppTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colors.background
-                ) {
-                    Scaffold(
-
-                        topBar = {
-                            TopAppBar(
-                                elevation = 2.dp,
-                                backgroundColor = MaterialTheme.colors.surface,
-                                contentColor = MaterialTheme.colors.onSurface,
-                                title = {
-                                    Text("Drawing App")
-                                },
-
-                                actions = {}
-                            )
-                        }
-                    ) { paddingValues: PaddingValues ->
-                        DrawingApp(paddingValues)
-                    }
-                }
+                MainScreen()
             }
         }
     }
 }
 
 @Composable
-fun Greeting(name: String) {
-    Text(text = "Hello $name!")
+fun MainScreen() {
+    val systemUiController = rememberSystemUiController()
+    val useDarkIcons = MaterialTheme.colors.isLight
+
+    SideEffect {
+        systemUiController.setSystemBarsColor(
+            color = Color.Transparent,
+            darkIcons = useDarkIcons
+        )
+    }
+
+    ProvideWindowInsets {
+        // A surface container using the 'background' color from the theme
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colors.background
+        ) {
+            Scaffold(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+                topBar = {
+                    DrawingAppBar()
+                }
+            ) { paddingValues: PaddingValues ->
+                DrawingApp(paddingValues)
+            }
+        }
+    }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun DefaultPreview() {
-    ComposeDrawingAppTheme {
-        Greeting("Android")
-    }
+fun DrawingAppBar() {
+    TopAppBar(
+        elevation = 4.dp,
+        backgroundColor = MaterialTheme.colors.primary,
+        contentColor = MaterialTheme.colors.onPrimary,
+        title = {
+            Text("DrawIt", color = MaterialTheme.colors.onPrimary)
+        },
+        actions = {
+           
+           // Open Button
+            IconButton(onClick = { /* TODO: Implement open */ }) {
+                Icon(
+                    imageVector = Icons.Default.FolderOpen,
+                    contentDescription = "Open Drawing",
+                    tint = MaterialTheme.colors.onPrimary
+                )
+            }
+
+            // Save Button
+            IconButton(onClick = { /* TODO: Implement save */ }) {
+                Icon(
+                    imageVector = Icons.Default.Save,
+                    contentDescription = "Save Drawing",
+                    tint = MaterialTheme.colors.onPrimary
+                )
+            }
+            
+           
+        }
+    )
 }
