@@ -94,6 +94,14 @@ fun DrawingAppBar() {
                 )
             }
             
+            // Export Button
+            IconButton(onClick = { /* TODO: Implement export */ }) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Export Drawing To PNG",
+                    tint = MaterialTheme.colors.onPrimary
+                )
+            }
            
         }
     )

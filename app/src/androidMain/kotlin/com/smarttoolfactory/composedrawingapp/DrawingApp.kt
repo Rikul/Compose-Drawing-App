@@ -252,27 +252,6 @@ fun DrawingApp(paddingValues: PaddingValues) {
                 restoreToCount(checkPoint)
             }
 
-            // 🔥🔥 This is for debugging
-//            canvasText.clear()
-//
-//            paths.forEach {
-//                val path = it.first
-//                val property = it.second
-//
-//                canvasText.append(
-//                    "pHash: ${path.hashCode()}, " +
-//                            "propHash: ${property.hashCode()}, " +
-//                            "Mode: ${property.eraseMode}\n"
-//                )
-//            }
-//
-//            canvasText.append(
-//                "🔥 pHash: ${currentPath.hashCode()}, " +
-//                        "propHash: ${currentPathProperty.hashCode()}, " +
-//                        "Mode: ${currentPathProperty.eraseMode}\n"
-//            )
-//
-//            drawText(text = canvasText.toString(), x = 0f, y = 60f, paint)
         }
 
         DrawingPropertiesMenu(
