@@ -76,33 +76,15 @@ fun DrawingAppBar() {
         },
         actions = {
            
-           // Open Button
-            IconButton(onClick = { /* TODO: Implement open */ }) {
-                Icon(
-                    imageVector = Icons.Default.FolderOpen,
-                    contentDescription = "Open Drawing",
-                    tint = MaterialTheme.colors.onPrimary
-                )
-            }
-
-            // Save Button
-            IconButton(onClick = { /* TODO: Implement save */ }) {
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = "Save Drawing",
-                    tint = MaterialTheme.colors.onPrimary
-                )
-            }
-            
-            // Export Button
-            IconButton(onClick = { /* TODO: Implement export */ }) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Export Drawing To PNG",
-                    tint = MaterialTheme.colors.onPrimary
-                )
-            }
            
         }
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DefaultPreview() {
+    ComposeDrawingAppTheme {
+        MainScreen()
+    }
 }
