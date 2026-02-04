@@ -17,7 +17,7 @@ kotlin {
     androidTarget {
         compilations.all {
             kotlinOptions {
-                jvmTarget = '1.8'
+                jvmTarget = '17'
             }
         }
     }
@@ -30,7 +30,7 @@ kotlin {
         
         androidMain {
             dependencies {
-                implementation 'androidx.core:core-ktx:1.7.0'
+                implementation 'androidx.core:core-ktx:1.12.0'
 
                 // Jetpack Compose
                 implementation "androidx.compose.ui:ui:$compose_version"
@@ -39,12 +39,11 @@ kotlin {
                 implementation "androidx.compose.runtime:runtime:$compose_version"
                 implementation "androidx.compose.ui:ui-tooling-preview:$compose_version"
 
-                implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.4.1'
-                implementation 'androidx.activity:activity-compose:1.4.0'
+                implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+                implementation 'androidx.activity:activity-compose:1.8.2'
 
-                // Accompanist for System UI Controller and Insets
-                implementation "com.google.accompanist:accompanist-systemuicontroller:0.28.0"
-                implementation "com.google.accompanist:accompanist-insets:0.28.0"
+                // Accompanist for System UI Controller
+                implementation "com.google.accompanist:accompanist-systemuicontroller:0.34.0"
 
                 implementation "app.cash.sqldelight:android-driver:2.0.2"
                 implementation "app.cash.sqldelight:coroutines-extensions:2.0.2"
@@ -60,8 +59,8 @@ kotlin {
         
         androidInstrumentedTest {
             dependencies {
-                implementation 'androidx.test.ext:junit:1.1.3'
-                implementation 'androidx.test.espresso:espresso-core:3.4.0'
+                implementation 'androidx.test.ext:junit:1.1.5'
+                implementation 'androidx.test.espresso:espresso-core:3.5.1'
                 implementation "androidx.compose.ui:ui-test-junit4:$compose_version"
             }
         }
@@ -92,8 +91,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     buildFeatures {
         compose true

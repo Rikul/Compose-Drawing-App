@@ -12,7 +12,7 @@ import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.core.view.WindowCompat
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -48,7 +48,7 @@ import java.io.OutputStream
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        enableEdgeToEdge()
         setContent {
             ComposeDrawingAppTheme {
                 MainScreen()
@@ -60,13 +60,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     val systemUiController = rememberSystemUiController()
-    val useDarkIcons = MaterialTheme.colors.isLight
 
-    SideEffect {
-        systemUiController.setSystemBarsColor(
-            color = Color.Transparent,
-            darkIcons = useDarkIcons
-        )
+    DisposableEffect(systemUiController) {
+        systemUiController.isStatusBarVisible = true
+        systemUiController.isNavigationBarVisible = true
+        onDispose {}
     }
 
     val context = LocalContext.current
@@ -137,7 +135,9 @@ fun MainScreen() {
     ) {
         Scaffold(
             modifier = Modifier
-                .fillMaxSize(),
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding(),
             topBar = {
                     DrawingAppBar(onExport = {
                         val widthFn = with(density) { configuration.screenWidthDp.dp.toPx().toInt() }
@@ -169,7 +169,7 @@ fun DrawingAppBar(onExport: () -> Unit = {}) {
         },
         actions = {
            IconButton(onClick = onExport) {
-               Icon(Icons.Filled.Save, contentDescription = "Export PNG")
+               Icon(Icons.Filled.Share, contentDescription = "Export PNG")
            }
         }
     )
@@ -205,7 +205,7 @@ fun saveBitmap(context: Context, paths: List<Pair<Path, PathProperties>>, width:
              canvas.drawPath(path.asAndroidPath(), paint)
         }
 
-        val filename = "Drawing_${System.currentTimeMillis()}.png"
+        val filename = "Draw_${System.currentTimeMillis()}.png"
         var fos: OutputStream? = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
@@ -224,7 +224,7 @@ fun saveBitmap(context: Context, paths: List<Pair<Path, PathProperties>>, width:
 
         fos?.use {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
-            Toast.makeText(context, "Saved to Pictures", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Saved ${filename} to Pictures", Toast.LENGTH_SHORT).show()
         }
     } catch (e: Exception) {
         e.printStackTrace()
