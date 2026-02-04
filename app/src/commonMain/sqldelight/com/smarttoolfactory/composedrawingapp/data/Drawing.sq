@@ -1,0 +1,37 @@
+CREATE TABLE DrawingStrokeEntity (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    strokeWidth REAL NOT NULL,
+    color INTEGER NOT NULL,
+    alpha REAL NOT NULL,
+    strokeCap TEXT NOT NULL,
+    strokeJoin TEXT NOT NULL,
+    eraseMode INTEGER NOT NULL,
+    pointsJson TEXT NOT NULL
+);
+
+getAllStrokes:
+SELECT * FROM DrawingStrokeEntity;
+
+insertStroke:
+INSERT INTO DrawingStrokeEntity (strokeWidth, color, alpha, strokeCap, strokeJoin, eraseMode, pointsJson)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+deleteAllStrokes:
+DELETE FROM DrawingStrokeEntity;
+
+CREATE TABLE DrawingPreferenceEntity (
+    id INTEGER NOT NULL PRIMARY KEY DEFAULT 0,
+    strokeWidth REAL NOT NULL,
+    color INTEGER NOT NULL,
+    alpha REAL NOT NULL,
+    strokeCap TEXT NOT NULL,
+    strokeJoin TEXT NOT NULL,
+    eraseMode INTEGER NOT NULL
+);
+
+getPreference:
+SELECT * FROM DrawingPreferenceEntity WHERE id = 0;
+
+savePreference:
+INSERT OR REPLACE INTO DrawingPreferenceEntity (id, strokeWidth, color, alpha, strokeCap, strokeJoin, eraseMode)
+VALUES (0, ?, ?, ?, ?, ?, ?);

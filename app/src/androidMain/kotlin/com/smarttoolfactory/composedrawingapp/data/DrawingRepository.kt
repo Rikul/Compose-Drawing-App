@@ -1,0 +1,127 @@
+package com.smarttoolfactory.composedrawingapp.data
+
+import android.content.Context
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import app.cash.sqldelight.driver.android.AndroidSqliteDriver
+import com.smarttoolfactory.composedrawingapp.model.DrawingStroke
+import com.smarttoolfactory.composedrawingapp.model.PathProperties
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+
+class DrawingRepository(context: Context) {
+
+    private val driver = AndroidSqliteDriver(Database.Schema, context, "Drawing.db")
+    private val database = Database(driver)
+    private val queries = database.drawingQueries
+    private val gson = Gson()
+
+    fun saveStrokes(strokes: List<DrawingStroke>) {
+        queries.transaction {
+            queries.deleteAllStrokes()
+            strokes.forEach { stroke ->
+                val pointsJson = gson.toJson(stroke.points.map { SerializablePoint(it.x, it.y) })
+                val props = stroke.pathProperties
+                
+                val capStr = when (props.strokeCap) {
+                    StrokeCap.Butt -> "Butt"
+                    StrokeCap.Round -> "Round"
+                    else -> "Square" 
+                }
+                val joinStr = when (props.strokeJoin) {
+                    StrokeJoin.Miter -> "Miter"
+                    StrokeJoin.Round -> "Round"
+                    else -> "Bevel"
+                }
+
+                queries.insertStroke(
+                    strokeWidth = props.strokeWidth.toDouble(),
+                    color = props.color.value.toLong(),
+                    alpha = props.alpha.toDouble(),
+                    strokeCap = capStr,
+                    strokeJoin = joinStr,
+                    eraseMode = if (props.eraseMode) 1L else 0L,
+                    pointsJson = pointsJson
+                )
+            }
+        }
+    }
+
+    fun getStrokes(): List<DrawingStroke> {
+         return queries.getAllStrokes().executeAsList().map { entity ->
+             val pointsType = object : TypeToken<List<SerializablePoint>>() {}.type
+             val sPoints: List<SerializablePoint> = gson.fromJson(entity.pointsJson, pointsType)
+             val points = sPoints.map { Offset(it.x, it.y) }
+             
+             val cap = when (entity.strokeCap) {
+                 "Butt" -> StrokeCap.Butt
+                 "Round" -> StrokeCap.Round
+                 else -> StrokeCap.Square
+             }
+             val join = when (entity.strokeJoin) {
+                 "Miter" -> StrokeJoin.Miter
+                 "Round" -> StrokeJoin.Round
+                 else -> StrokeJoin.Bevel
+             }
+
+             val props = PathProperties(
+                 strokeWidth = entity.strokeWidth.toFloat(),
+                 color = Color(entity.color.toULong()),
+                 alpha = entity.alpha.toFloat(),
+                 strokeCap = cap,
+                 strokeJoin = join,
+                 eraseMode = entity.eraseMode == 1L
+             )
+             DrawingStroke(props, points)
+         }
+    }
+
+    fun savePreference(properties: PathProperties) {
+         val capStr = when (properties.strokeCap) {
+            StrokeCap.Butt -> "Butt"
+            StrokeCap.Round -> "Round"
+            else -> "Square" 
+         }
+         val joinStr = when (properties.strokeJoin) {
+            StrokeJoin.Miter -> "Miter"
+            StrokeJoin.Round -> "Round"
+            else -> "Bevel"
+         }
+         queries.savePreference(
+             strokeWidth = properties.strokeWidth.toDouble(),
+             color = properties.color.value.toLong(),
+             alpha = properties.alpha.toDouble(),
+             strokeCap = capStr,
+             strokeJoin = joinStr,
+             eraseMode = if (properties.eraseMode) 1L else 0L
+         )
+    }
+
+    fun getPreference(): PathProperties? {
+        val entity = queries.getPreference().executeAsOneOrNull() ?: return null
+        
+        val cap = when (entity.strokeCap) {
+             "Butt" -> StrokeCap.Butt
+             "Round" -> StrokeCap.Round
+             else -> StrokeCap.Square
+        }
+        val join = when (entity.strokeJoin) {
+             "Miter" -> StrokeJoin.Miter
+             "Round" -> StrokeJoin.Round
+             else -> StrokeJoin.Bevel
+        }
+        
+        return PathProperties(
+             strokeWidth = entity.strokeWidth.toFloat(),
+             color = Color(entity.color.toULong()),
+             alpha = entity.alpha.toFloat(),
+             strokeCap = cap,
+             strokeJoin = join,
+             eraseMode = entity.eraseMode == 1L
+        )
+    }
+}
+
+data class SerializablePoint(val x: Float, val y: Float)

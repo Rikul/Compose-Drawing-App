@@ -20,30 +20,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.smarttoolfactory.composedrawingapp.gesture.MotionEvent
 import com.smarttoolfactory.composedrawingapp.gesture.dragMotionEvent
+import com.smarttoolfactory.composedrawingapp.model.DrawingStroke
 import com.smarttoolfactory.composedrawingapp.model.PathProperties
 import com.smarttoolfactory.composedrawingapp.ui.menu.DrawingPropertiesMenu
 import com.smarttoolfactory.composedrawingapp.ui.theme.backgroundColor
+import androidx.compose.runtime.snapshots.SnapshotStateList
 
 @Composable
-fun DrawingApp(paddingValues: PaddingValues) {
+fun DrawingApp(
+    paddingValues: PaddingValues,
+    paths: SnapshotStateList<Pair<Path, PathProperties>>,
+    pathsUndone: SnapshotStateList<Pair<Path, PathProperties>>,
+    strokeList: SnapshotStateList<DrawingStroke>,
+    strokeListUndone: SnapshotStateList<DrawingStroke>,
+    currentPathPropertyState: MutableState<PathProperties>
+) {
 
     val context = LocalContext.current
 
-    /**
-     * Paths that are added, this is required to have paths with different options and paths
-     *  ith erase to keep over each other
-     */
-    val paths = remember { mutableStateListOf<Pair<Path, PathProperties>>() }
-
-    /**
-     * Paths that are undone via button. These paths are restored if user pushes
-     * redo button if there is no new path drawn.
-     *
-     * If new path is drawn after this list is cleared to not break paths after undoing previous
-     * ones.
-     */
-    val pathsUndone = remember { mutableStateListOf<Pair<Path, PathProperties>>() }
-
+    var currentPathProperty by currentPathPropertyState
+    val currentPoints = remember { mutableStateListOf<Offset>() }
+    
     /**
      * Canvas touch state. [MotionEvent.Idle] by default, [MotionEvent.Down] at first contact,
      * [MotionEvent.Move] while dragging and [MotionEvent.Up] when first pointer is up
@@ -71,11 +68,6 @@ fun DrawingApp(paddingValues: PaddingValues) {
      */
     var currentPath by remember { mutableStateOf(Path()) }
 
-    /**
-     * Properties of path that is currently being drawn between
-     * [MotionEvent.Down] and [MotionEvent.Up].
-     */
-    var currentPathProperty by remember { mutableStateOf(PathProperties()) }
 
     val canvasText = remember { StringBuilder() }
     val paint = remember {
@@ -102,7 +94,11 @@ fun DrawingApp(paddingValues: PaddingValues) {
                 onDragStart = { pointerInputChange ->
                     motionEvent = MotionEvent.Down
                     currentPosition = pointerInputChange.position
-                    pointerInputChange.consumeDownChange()
+                    if (drawMode != DrawMode.Touch) {
+                         currentPoints.clear()
+                         currentPoints.add(currentPosition)
+                    }
+                    pointerInputChange.consume()
 
                 },
                 onDrag = { pointerInputChange ->
@@ -117,13 +113,15 @@ fun DrawingApp(paddingValues: PaddingValues) {
                             path.translate(change)
                         }
                         currentPath.translate(change)
+                    } else {
+                        currentPoints.add(currentPosition)
                     }
-                    pointerInputChange.consumePositionChange()
+                    pointerInputChange.consume()
 
                 },
                 onDragEnd = { pointerInputChange ->
                     motionEvent = MotionEvent.Up
-                    pointerInputChange.consumeDownChange()
+                    pointerInputChange.consume()
                 }
             )
 
@@ -162,6 +160,8 @@ fun DrawingApp(paddingValues: PaddingValues) {
 //                        paths[currentPath] = currentPathProperty
                         paths.add(Pair(currentPath, currentPathProperty))
 
+                        strokeList.add(DrawingStroke(currentPathProperty.copy(), currentPoints.toList()))
+
                         // Since paths are keys for map, use new one for each key
                         // and have separate path for each down-move-up gesture cycle
                         currentPath = Path()
@@ -179,6 +179,7 @@ fun DrawingApp(paddingValues: PaddingValues) {
 
                     // Since new path is drawn no need to store paths to undone
                     pathsUndone.clear()
+                    strokeListUndone.clear()
 
                     // If we leave this state at MotionEvent.Up it causes current path to draw
                     // line from (0,0) if this composable recomposes when draw mode is changed
@@ -252,27 +253,6 @@ fun DrawingApp(paddingValues: PaddingValues) {
                 restoreToCount(checkPoint)
             }
 
-            // 🔥🔥 This is for debugging
-//            canvasText.clear()
-//
-//            paths.forEach {
-//                val path = it.first
-//                val property = it.second
-//
-//                canvasText.append(
-//                    "pHash: ${path.hashCode()}, " +
-//                            "propHash: ${property.hashCode()}, " +
-//                            "Mode: ${property.eraseMode}\n"
-//                )
-//            }
-//
-//            canvasText.append(
-//                "🔥 pHash: ${currentPath.hashCode()}, " +
-//                        "propHash: ${currentPathProperty.hashCode()}, " +
-//                        "Mode: ${currentPathProperty.eraseMode}\n"
-//            )
-//
-//            drawText(text = canvasText.toString(), x = 0f, y = 60f, paint)
         }
 
         DrawingPropertiesMenu(
@@ -294,6 +274,11 @@ fun DrawingApp(paddingValues: PaddingValues) {
 
                     pathsUndone.add(Pair(lastPath, lastPathProperty))
 
+                    if (strokeList.isNotEmpty()) {
+                        val lastStroke = strokeList.last()
+                        strokeList.remove(lastStroke)
+                        strokeListUndone.add(lastStroke)
+                    }
                 }
             },
             onRedo = {
@@ -301,8 +286,16 @@ fun DrawingApp(paddingValues: PaddingValues) {
 
                     val lastPath = pathsUndone.last().first
                     val lastPathProperty = pathsUndone.last().second
-                    pathsUndone.removeLast()
+                    if (pathsUndone.isNotEmpty()) {
+                        pathsUndone.removeAt(pathsUndone.lastIndex)
+                    }
                     paths.add(Pair(lastPath, lastPathProperty))
+
+                    if (strokeListUndone.isNotEmpty()) {
+                        val lastStroke = strokeListUndone.last()
+                        strokeListUndone.remove(lastStroke)
+                        strokeList.add(lastStroke)
+                    }
                 }
             },
             onPathPropertiesChange = {

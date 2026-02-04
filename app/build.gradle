@@ -1,15 +1,80 @@
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.multiplatform'
+    id 'org.jetbrains.kotlin.plugin.compose'
+    id 'app.cash.sqldelight'
+}
+
+sqldelight {
+  databases {
+    create("Database") {
+      packageName.set("com.smarttoolfactory.composedrawingapp.data")
+    }
+  }
+}
+
+kotlin {
+    androidTarget {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = '17'
+            }
+        }
+    }
+    
+    sourceSets {
+        commonMain {
+            dependencies {
+            }
+        }
+        
+        androidMain {
+            dependencies {
+                implementation 'androidx.core:core-ktx:1.12.0'
+
+                // Jetpack Compose
+                implementation "androidx.compose.ui:ui:$compose_version"
+                implementation "androidx.compose.material:material:$compose_version"
+                implementation "androidx.compose.material:material-icons-extended:$compose_version"
+                implementation "androidx.compose.runtime:runtime:$compose_version"
+                implementation "androidx.compose.ui:ui-tooling-preview:$compose_version"
+
+                implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+                implementation 'androidx.activity:activity-compose:1.8.2'
+
+                // Accompanist for System UI Controller
+                implementation "com.google.accompanist:accompanist-systemuicontroller:0.34.0"
+
+                implementation "app.cash.sqldelight:android-driver:2.0.2"
+                implementation "app.cash.sqldelight:coroutines-extensions:2.0.2"
+                implementation "com.google.code.gson:gson:2.10.1"
+            }
+        }
+        
+        androidUnitTest {
+            dependencies {
+                implementation 'junit:junit:4.13.2'
+            }
+        }
+        
+        androidInstrumentedTest {
+            dependencies {
+                implementation 'androidx.test.ext:junit:1.1.5'
+                implementation 'androidx.test.espresso:espresso-core:3.5.1'
+                implementation "androidx.compose.ui:ui-test-junit4:$compose_version"
+            }
+        }
+    }
 }
 
 android {
-    compileSdk 31
+    namespace "com.smarttoolfactory.composedrawingapp"
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.smarttoolfactory.composedrawingapp"
         minSdk 21
-        targetSdk 31
+        targetSdk 36
         versionCode 1
         versionName "1.0"
 
@@ -26,18 +91,17 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-    kotlinOptions {
-        jvmTarget = '1.8'
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     buildFeatures {
         compose true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion compose_version
+    
+    lint {
+        abortOnError false
     }
+    
     packagingOptions {
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
@@ -46,22 +110,5 @@ android {
 }
 
 dependencies {
-
-    implementation 'androidx.core:core-ktx:1.7.0'
-
-    // Jetpack Compose
-    implementation "androidx.compose.ui:ui:$compose_version"
-    implementation "androidx.compose.ui:ui-tooling:$compose_version"
-    implementation "androidx.compose.material:material:$compose_version"
-    implementation "androidx.compose.material:material-icons-extended:$compose_version"
-    implementation "androidx.compose.runtime:runtime:$compose_version"
-
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.4.1'
-    implementation 'androidx.activity:activity-compose:1.4.0'
-
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
-    androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
     debugImplementation "androidx.compose.ui:ui-tooling:$compose_version"
 }

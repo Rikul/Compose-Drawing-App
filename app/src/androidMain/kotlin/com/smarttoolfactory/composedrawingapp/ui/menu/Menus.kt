@@ -305,12 +305,6 @@ fun ColorSelectionDialog(
                     )
                 }
 
-                ColorWheel(
-                    modifier = Modifier
-                        .width(widthInDp * .8f)
-                        .aspectRatio(1f)
-                )
-
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Sliders
