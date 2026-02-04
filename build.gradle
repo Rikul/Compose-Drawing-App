@@ -9,6 +9,7 @@ buildscript {
     }
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "app.cash.sqldelight:gradle-plugin:2.0.2"
     }
 }// Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {

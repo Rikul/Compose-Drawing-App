@@ -2,6 +2,15 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.multiplatform'
     id 'org.jetbrains.kotlin.plugin.compose'
+    id 'app.cash.sqldelight'
+}
+
+sqldelight {
+  databases {
+    create("Database") {
+      packageName.set("com.smarttoolfactory.composedrawingapp.data")
+    }
+  }
 }
 
 kotlin {
@@ -36,6 +45,10 @@ kotlin {
                 // Accompanist for System UI Controller and Insets
                 implementation "com.google.accompanist:accompanist-systemuicontroller:0.28.0"
                 implementation "com.google.accompanist:accompanist-insets:0.28.0"
+
+                implementation "app.cash.sqldelight:android-driver:2.0.2"
+                implementation "app.cash.sqldelight:coroutines-extensions:2.0.2"
+                implementation "com.google.code.gson:gson:2.10.1"
             }
         }
         
