@@ -44,6 +44,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.OutputStream
+import androidx.compose.ui.geometry.Rect
+import kotlin.math.max
+import kotlin.math.min
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -139,11 +142,17 @@ fun MainScreen() {
                 .statusBarsPadding()
                 .navigationBarsPadding(),
             topBar = {
-                    DrawingAppBar(onExport = {
-                        val widthFn = with(density) { configuration.screenWidthDp.dp.toPx().toInt() }
-                        val heightFn = with(density) { configuration.screenHeightDp.dp.toPx().toInt() }
-                        saveBitmap(context, paths.toList(), widthFn, heightFn)
-                    })
+                    DrawingAppBar(
+                        onExport = {
+                            saveBitmapWithBounds(context, paths.toList())
+                        },
+                        onClear = {
+                            paths.clear()
+                            pathsUndone.clear()
+                            strokeList.clear()
+                            strokeListUndone.clear()
+                        }
+                    )
                 }
             ) { paddingValues: PaddingValues ->
                 DrawingApp(
@@ -159,7 +168,32 @@ fun MainScreen() {
 }
 
 @Composable
-fun DrawingAppBar(onExport: () -> Unit = {}) {
+fun DrawingAppBar(onExport: () -> Unit = {}, onClear: () -> Unit = {}) {
+    var showClearDialog by remember { mutableStateOf(false) }
+    
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text("Clear Canvas") },
+            text = { Text("Clear canvas and start a new drawing?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearDialog = false
+                        onClear()
+                    }
+                ) {
+                    Text("Clear")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
     TopAppBar(
         elevation = 4.dp,
         backgroundColor = MaterialTheme.colors.primary,
@@ -168,11 +202,124 @@ fun DrawingAppBar(onExport: () -> Unit = {}) {
             Text("DrawIt", color = MaterialTheme.colors.onPrimary)
         },
         actions = {
+           IconButton(onClick = { showClearDialog = true }) {
+               Icon(Icons.Filled.Add, contentDescription = "New Drawing")
+           }
            IconButton(onClick = onExport) {
                Icon(Icons.Filled.Share, contentDescription = "Export PNG")
            }
         }
     )
+}
+
+/**
+ * Calculate the bounds of all paths to capture the entire drawing
+ */
+fun calculateDrawingBounds(paths: List<Pair<Path, PathProperties>>): Rect {
+    if (paths.isEmpty()) {
+        return Rect(0f, 0f, 100f, 100f) // Default small size if no paths
+    }
+    
+    var minX = Float.MAX_VALUE
+    var minY = Float.MAX_VALUE
+    var maxX = Float.MIN_VALUE
+    var maxY = Float.MIN_VALUE
+    
+    paths.forEach { (path, props) ->
+        val androidPath = path.asAndroidPath()
+        val bounds = android.graphics.RectF()
+        androidPath.computeBounds(bounds, true)
+        
+        // Account for stroke width to ensure edges aren't cut off
+        val strokePadding = props.strokeWidth / 2f
+        
+        minX = min(minX, bounds.left - strokePadding)
+        minY = min(minY, bounds.top - strokePadding)
+        maxX = max(maxX, bounds.right + strokePadding)
+        maxY = max(maxY, bounds.bottom + strokePadding)
+    }
+    
+    // Add some padding around the drawing
+    val padding = 20f
+    return Rect(
+        minX - padding,
+        minY - padding,
+        maxX + padding,
+        maxY + padding
+    )
+}
+
+/**
+ * Save the entire drawing by calculating its bounds and exporting only the drawn area
+ */
+fun saveBitmapWithBounds(context: Context, paths: List<Pair<Path, PathProperties>>) {
+    try {
+        if (paths.isEmpty()) {
+            Toast.makeText(context, "Nothing to export - canvas is empty", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // Calculate the actual bounds of the drawing
+        val bounds = calculateDrawingBounds(paths)
+        val drawingWidth = (bounds.width).toInt().coerceAtLeast(100)
+        val drawingHeight = (bounds.height).toInt().coerceAtLeast(100)
+        
+        val bitmap = Bitmap.createBitmap(drawingWidth, drawingHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(android.graphics.Color.WHITE)
+        
+        // Translate the canvas so the drawing starts at (0,0) in the bitmap
+        canvas.translate(-bounds.left, -bounds.top)
+        
+        paths.forEach { (path, props) ->
+            val paint = android.graphics.Paint().apply {
+                color = props.color.toArgb()
+                strokeWidth = props.strokeWidth
+                alpha = (props.alpha * 255).toInt()
+                style = android.graphics.Paint.Style.STROKE
+                strokeCap = when(props.strokeCap) { 
+                    StrokeCap.Butt -> android.graphics.Paint.Cap.BUTT
+                    StrokeCap.Round -> android.graphics.Paint.Cap.ROUND
+                    else -> android.graphics.Paint.Cap.SQUARE
+                }
+                strokeJoin = when(props.strokeJoin) {
+                    StrokeJoin.Miter -> android.graphics.Paint.Join.MITER
+                    StrokeJoin.Round -> android.graphics.Paint.Join.ROUND
+                    else -> android.graphics.Paint.Join.BEVEL
+                }
+                isAntiAlias = true
+            }
+            if (props.eraseMode) {
+                paint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR)
+            }
+            canvas.drawPath(path.asAndroidPath(), paint)
+        }
+
+        val filename = "Draw_${System.currentTimeMillis()}.png"
+        var fos: OutputStream? = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val resolver = context.contentResolver
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+            }
+            val imageUri: Uri? = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            fos = imageUri?.let { resolver.openOutputStream(it) }
+        } else {
+            val imagesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            val image = java.io.File(imagesDir, filename)
+            fos = java.io.FileOutputStream(image)
+        }
+
+        fos?.use {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+            Toast.makeText(context, "Saved ${filename} (${drawingWidth}x${drawingHeight}px) to Pictures", Toast.LENGTH_SHORT).show()
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        Toast.makeText(context, "Error saving image: ${e.message}", Toast.LENGTH_SHORT).show()
+    }
 }
 
 fun saveBitmap(context: Context, paths: List<Pair<Path, PathProperties>>, width: Int, height: Int) {
