@@ -39,7 +39,10 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.smarttoolfactory.composedrawingapp.data.DrawingRepository
 import com.smarttoolfactory.composedrawingapp.model.DrawingStroke
 import com.smarttoolfactory.composedrawingapp.model.PathProperties
+import com.smarttoolfactory.composedrawingapp.model.SavedDrawing
 import com.smarttoolfactory.composedrawingapp.ui.theme.ComposeDrawingAppTheme
+import com.smarttoolfactory.composedrawingapp.ui.dialogs.*
+import com.smarttoolfactory.composedrawingapp.ui.screens.SavedDrawingsScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -79,6 +82,17 @@ fun MainScreen() {
     val strokeList = remember { mutableStateListOf<DrawingStroke>() }
     val strokeListUndone = remember { mutableStateListOf<DrawingStroke>() }
     val currentPathPropertyState = remember { mutableStateOf(PathProperties()) }
+    
+    // Navigation and drawing state
+    var showSavedDrawingsScreen by remember { mutableStateOf(false) }
+    var currentDrawingName by remember { mutableStateOf<String?>(null) }
+    var hasUnsavedChanges by remember { mutableStateOf(false) }
+    var savedDrawings by remember { mutableStateOf<List<SavedDrawing>>(emptyList()) }
+    
+    // Dialog states
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var showDrawingExistsDialog by remember { mutableStateOf(false) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
 
     // Restore
     LaunchedEffect(Unit) {
@@ -110,6 +124,13 @@ fun MainScreen() {
         }
     }
     
+    // Track changes
+    LaunchedEffect(strokeList.size) {
+        if (strokeList.isNotEmpty()) {
+            hasUnsavedChanges = true
+        }
+    }
+    
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -131,26 +152,108 @@ fun MainScreen() {
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
 
+    // Helper functions
+    fun loadDrawing(drawing: SavedDrawing) {
+        scope.launch(Dispatchers.IO) {
+            val strokes = repository.loadDrawing(drawing.id)
+            withContext(Dispatchers.Main) {
+                currentDrawingName = drawing.name
+                hasUnsavedChanges = false
+                strokeList.clear()
+                strokeList.addAll(strokes)
+                paths.clear()
+                strokes.forEach { stroke ->
+                    val p = Path()
+                    if (stroke.points.isNotEmpty()) {
+                        p.moveTo(stroke.points[0].x, stroke.points[0].y)
+                        if (stroke.points.size > 1) {
+                            for (i in 1 until stroke.points.size) {
+                                p.lineTo(stroke.points[i].x, stroke.points[i].y)
+                            }
+                        }
+                    }
+                    paths.add(Pair(p, stroke.pathProperties))
+                }
+                showSavedDrawingsScreen = false
+            }
+        }
+    }
+    
+    fun saveCurrentDrawing(name: String) {
+        scope.launch(Dispatchers.IO) {
+            val success = repository.saveDrawing(name, strokeList.toList())
+            withContext(Dispatchers.Main) {
+                if (success) {
+                    currentDrawingName = name
+                    hasUnsavedChanges = false
+                    Toast.makeText(context, "Drawing saved", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Error saving drawing", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    fun clearCanvas() {
+        paths.clear()
+        pathsUndone.clear()
+        strokeList.clear()
+        strokeListUndone.clear()
+        currentDrawingName = null
+        hasUnsavedChanges = false
+    }
+
     // A surface container using the 'background' color from the theme
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colors.background
     ) {
-        Scaffold(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding(),
-            topBar = {
+        if (showSavedDrawingsScreen) {
+            SavedDrawingsScreen(
+                savedDrawings = savedDrawings,
+                onBack = { showSavedDrawingsScreen = false },
+                onDrawingClick = { drawing -> loadDrawing(drawing) },
+                onDeleteDrawing = { drawing ->
+                    scope.launch(Dispatchers.IO) {
+                        repository.deleteDrawing(drawing.id)
+                        savedDrawings = repository.getAllSavedDrawings()
+                    }
+                }
+            )
+        } else {
+            Scaffold(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+                topBar = {
                     DrawingAppBar(
+                        onSave = {
+                            if (currentDrawingName != null) {
+                                // Update existing drawing
+                                saveCurrentDrawing(currentDrawingName!!)
+                            } else {
+                                // Show save dialog for new drawing
+                                showSaveDialog = true
+                            }
+                        },
+                        onOpen = {
+                            scope.launch(Dispatchers.IO) {
+                                savedDrawings = repository.getAllSavedDrawings()
+                                withContext(Dispatchers.Main) {
+                                    if (hasUnsavedChanges) {
+                                        showDiscardDialog = true
+                                    } else {
+                                        showSavedDrawingsScreen = true
+                                    }
+                                }
+                            }
+                        },
                         onExport = {
                             saveBitmapWithBounds(context, paths.toList())
                         },
                         onClear = {
-                            paths.clear()
-                            pathsUndone.clear()
-                            strokeList.clear()
-                            strokeListUndone.clear()
+                            clearCanvas()
                         }
                     )
                 }
@@ -164,11 +267,56 @@ fun MainScreen() {
                     currentPathPropertyState
                 )
             }
+        }
+    }
+    
+    // Dialogs
+    if (showSaveDialog) {
+        SaveDrawingDialog(
+            onDismiss = { showSaveDialog = false },
+            onSave = { name ->
+                saveCurrentDrawing(name)
+                showSaveDialog = false
+            },
+            onNameExists = {
+                showSaveDialog = false
+                showDrawingExistsDialog = true
+            },
+            checkNameExists = { name ->
+                repository.drawingNameExists(name)
+            }
+        )
+    }
+    
+    if (showDrawingExistsDialog) {
+        DrawingExistsDialog(
+            onDismiss = {
+                showDrawingExistsDialog = false
+                showSaveDialog = true
+            }
+        )
+    }
+    
+    if (showDiscardDialog) {
+        DiscardChangesDialog(
+            onDiscard = {
+                showDiscardDialog = false
+                showSavedDrawingsScreen = true
+            },
+            onCancel = {
+                showDiscardDialog = false
+            }
+        )
     }
 }
 
 @Composable
-fun DrawingAppBar(onExport: () -> Unit = {}, onClear: () -> Unit = {}) {
+fun DrawingAppBar(
+    onSave: () -> Unit = {},
+    onOpen: () -> Unit = {},
+    onExport: () -> Unit = {},
+    onClear: () -> Unit = {}
+) {
     var showClearDialog by remember { mutableStateOf(false) }
     
     if (showClearDialog) {
@@ -202,6 +350,12 @@ fun DrawingAppBar(onExport: () -> Unit = {}, onClear: () -> Unit = {}) {
             Text("DrawIt", color = MaterialTheme.colors.onPrimary)
         },
         actions = {
+           IconButton(onClick = onSave) {
+               Icon(Icons.Filled.Save, contentDescription = "Save")
+           }
+           IconButton(onClick = onOpen) {
+               Icon(Icons.Filled.FolderOpen, contentDescription = "Open")
+           }
            IconButton(onClick = { showClearDialog = true }) {
                Icon(Icons.Filled.Add, contentDescription = "New Drawing")
            }

@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.smarttoolfactory.composedrawingapp.model.DrawingStroke
 import com.smarttoolfactory.composedrawingapp.model.PathProperties
+import com.smarttoolfactory.composedrawingapp.model.SavedDrawing
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -121,6 +122,114 @@ class DrawingRepository(context: Context) {
              strokeJoin = join,
              eraseMode = entity.eraseMode == 1L
         )
+    }
+    
+    // Saved Drawings Management
+    
+    fun getAllSavedDrawings(): List<SavedDrawing> {
+        return queries.getAllSavedDrawings().executeAsList().map {
+            SavedDrawing(
+                id = it.id,
+                name = it.name,
+                dateCreated = it.dateCreated
+            )
+        }
+    }
+    
+    fun drawingNameExists(name: String): Boolean {
+        return queries.getSavedDrawing(name).executeAsOneOrNull() != null
+    }
+    
+    fun saveDrawing(name: String, strokes: List<DrawingStroke>): Boolean {
+        return try {
+            queries.transaction {
+                // Check if drawing exists
+                val existing = queries.getSavedDrawing(name).executeAsOneOrNull()
+                val drawingId = if (existing != null) {
+                    // Update existing drawing
+                    queries.updateSavedDrawingStrokes(existing.id)
+                    existing.id
+                } else {
+                    // Create new drawing
+                    queries.insertSavedDrawing(name, System.currentTimeMillis())
+                    queries.getLastInsertedDrawingId().executeAsOne()
+                }
+                
+                // Save strokes
+                strokes.forEach { stroke ->
+                    val pointsJson = gson.toJson(stroke.points.map { SerializablePoint(it.x, it.y) })
+                    val props = stroke.pathProperties
+                    
+                    val capStr = when (props.strokeCap) {
+                        StrokeCap.Butt -> "Butt"
+                        StrokeCap.Round -> "Round"
+                        else -> "Square" 
+                    }
+                    val joinStr = when (props.strokeJoin) {
+                        StrokeJoin.Miter -> "Miter"
+                        StrokeJoin.Round -> "Round"
+                        else -> "Bevel"
+                    }
+
+                    queries.insertSavedDrawingStroke(
+                        drawingId = drawingId,
+                        strokeWidth = props.strokeWidth.toDouble(),
+                        color = props.color.value.toLong(),
+                        alpha = props.alpha.toDouble(),
+                        strokeCap = capStr,
+                        strokeJoin = joinStr,
+                        eraseMode = if (props.eraseMode) 1L else 0L,
+                        pointsJson = pointsJson
+                    )
+                }
+            }
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+    
+    fun loadDrawing(drawingId: Long): List<DrawingStroke> {
+        return queries.getSavedDrawingStrokes(drawingId).executeAsList().map { entity ->
+            val pointsType = object : TypeToken<List<SerializablePoint>>() {}.type
+            val sPoints: List<SerializablePoint> = gson.fromJson(entity.pointsJson, pointsType)
+            val points = sPoints.map { Offset(it.x, it.y) }
+            
+            val cap = when (entity.strokeCap) {
+                "Butt" -> StrokeCap.Butt
+                "Round" -> StrokeCap.Round
+                else -> StrokeCap.Square
+            }
+            val join = when (entity.strokeJoin) {
+                "Miter" -> StrokeJoin.Miter
+                "Round" -> StrokeJoin.Round
+                else -> StrokeJoin.Bevel
+            }
+
+            val props = PathProperties(
+                strokeWidth = entity.strokeWidth.toFloat(),
+                color = Color(entity.color.toULong()),
+                alpha = entity.alpha.toFloat(),
+                strokeCap = cap,
+                strokeJoin = join,
+                eraseMode = entity.eraseMode == 1L
+            )
+            DrawingStroke(props, points)
+        }
+    }
+    
+    fun deleteDrawing(drawingId: Long): Boolean {
+        return try {
+            queries.transaction {
+                queries.deleteSavedDrawingStrokes(drawingId)
+                queries.deleteSavedDrawing(drawingId)
+            }
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 }
 
