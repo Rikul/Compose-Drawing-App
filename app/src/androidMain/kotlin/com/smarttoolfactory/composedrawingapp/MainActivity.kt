@@ -31,8 +31,10 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
@@ -88,6 +90,7 @@ fun MainScreen() {
     var currentDrawingName by remember { mutableStateOf<String?>(null) }
     var hasUnsavedChanges by remember { mutableStateOf(false) }
     var savedDrawings by remember { mutableStateOf<List<SavedDrawing>>(emptyList()) }
+    var initialStrokeCount by remember { mutableStateOf(0) }
     
     // Dialog states
     var showSaveDialog by remember { mutableStateOf(false) }
@@ -98,11 +101,12 @@ fun MainScreen() {
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             val savedStrokes = repository.getStrokes()
-            val savedPref = repository.getPreference()
+            val (savedPref, savedDrawingName) = repository.getPreference()
             withContext(Dispatchers.Main) {
                  if (savedPref != null) {
                      currentPathPropertyState.value = savedPref
                  }
+                 currentDrawingName = savedDrawingName
                  if (savedStrokes.isNotEmpty()) {
                      strokeList.clear()
                      strokeList.addAll(savedStrokes)
@@ -120,13 +124,14 @@ fun MainScreen() {
                          paths.add(Pair(p, stroke.pathProperties))
                      }
                  }
+                 initialStrokeCount = strokeList.size
             }
         }
     }
     
-    // Track changes
+    // Track changes - only when stroke count differs from initial/saved state
     LaunchedEffect(strokeList.size) {
-        if (strokeList.isNotEmpty()) {
+        if (strokeList.size != initialStrokeCount) {
             hasUnsavedChanges = true
         }
     }
@@ -137,9 +142,10 @@ fun MainScreen() {
             if (event == Lifecycle.Event.ON_STOP) {
                 val strokes = strokeList.toList()
                 val pref = currentPathPropertyState.value
+                val drawingName = currentDrawingName
                 scope.launch(Dispatchers.IO) {
                     repository.saveStrokes(strokes)
-                    repository.savePreference(pref)
+                    repository.savePreference(pref, drawingName)
                 }
             }
         }
@@ -174,6 +180,7 @@ fun MainScreen() {
                     }
                     paths.add(Pair(p, stroke.pathProperties))
                 }
+                initialStrokeCount = strokeList.size
                 showSavedDrawingsScreen = false
             }
         }
@@ -186,6 +193,7 @@ fun MainScreen() {
                 if (success) {
                     currentDrawingName = name
                     hasUnsavedChanges = false
+                    initialStrokeCount = strokeList.size
                     Toast.makeText(context, "Drawing saved", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(context, "Error saving drawing", Toast.LENGTH_SHORT).show()
@@ -201,6 +209,7 @@ fun MainScreen() {
         strokeListUndone.clear()
         currentDrawingName = null
         hasUnsavedChanges = false
+        initialStrokeCount = 0
     }
 
     // A surface container using the 'background' color from the theme
@@ -228,6 +237,8 @@ fun MainScreen() {
                     .navigationBarsPadding(),
                 topBar = {
                     DrawingAppBar(
+                        drawingName = currentDrawingName,
+                        hasUnsavedChanges = hasUnsavedChanges,
                         onSave = {
                             if (currentDrawingName != null) {
                                 // Update existing drawing
@@ -312,6 +323,8 @@ fun MainScreen() {
 
 @Composable
 fun DrawingAppBar(
+    drawingName: String?,
+    hasUnsavedChanges: Boolean,
     onSave: () -> Unit = {},
     onOpen: () -> Unit = {},
     onExport: () -> Unit = {},
@@ -347,7 +360,23 @@ fun DrawingAppBar(
         backgroundColor = MaterialTheme.colors.primary,
         contentColor = MaterialTheme.colors.onPrimary,
         title = {
-            Text("DrawIt", color = MaterialTheme.colors.onPrimary)
+            Column {
+                Text(
+                    text = "DrawIt",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colors.onPrimary
+                )
+                Text(
+                    text = when {
+                        drawingName != null && hasUnsavedChanges -> "$drawingName *"
+                        drawingName != null -> drawingName
+                        else -> "*Untitled*"
+                    },
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colors.onPrimary
+                )
+            }
         },
         actions = {
            IconButton(onClick = onSave) {

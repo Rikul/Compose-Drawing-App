@@ -26,15 +26,16 @@ CREATE TABLE DrawingPreferenceEntity (
     alpha REAL NOT NULL,
     strokeCap TEXT NOT NULL,
     strokeJoin TEXT NOT NULL,
-    eraseMode INTEGER NOT NULL
+    eraseMode INTEGER NOT NULL,
+    currentDrawingName TEXT
 );
 
 getPreference:
 SELECT * FROM DrawingPreferenceEntity WHERE id = 0;
 
 savePreference:
-INSERT OR REPLACE INTO DrawingPreferenceEntity (id, strokeWidth, color, alpha, strokeCap, strokeJoin, eraseMode)
-VALUES (0, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO DrawingPreferenceEntity (id, strokeWidth, color, alpha, strokeCap, strokeJoin, eraseMode, currentDrawingName)
+VALUES (0, ?, ?, ?, ?, ?, ?, ?);
 
 CREATE TABLE SavedDrawingEntity (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,

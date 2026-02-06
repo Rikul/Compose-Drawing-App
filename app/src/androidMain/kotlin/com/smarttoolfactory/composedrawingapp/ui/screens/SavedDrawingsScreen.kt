@@ -29,6 +29,10 @@ fun SavedDrawingsScreen(
     var drawingToDelete by remember { mutableStateOf<SavedDrawing?>(null) }
     
     Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding(),
         topBar = {
             TopAppBar(
                 title = { Text("Your Saved Drawings") },
