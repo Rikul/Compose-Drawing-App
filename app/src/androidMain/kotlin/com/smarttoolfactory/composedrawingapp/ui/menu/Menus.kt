@@ -6,10 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Brush
-import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.TouchApp
-import androidx.compose.material.icons.filled.Undo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,13 +102,13 @@ fun DrawingPropertiesMenu(
         IconButton(onClick = {
             onUndo()
         }) {
-            Icon(Icons.Filled.Undo, contentDescription = null, tint = Color.LightGray)
+            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, tint = Color.LightGray)
         }
 
         IconButton(onClick = {
             onRedo()
         }) {
-            Icon(Icons.Filled.Redo, contentDescription = null, tint = Color.LightGray)
+            Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = null, tint = Color.LightGray)
         }
     }
 

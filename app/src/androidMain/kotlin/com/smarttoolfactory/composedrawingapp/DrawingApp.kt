@@ -102,7 +102,7 @@ fun DrawingApp(paddingValues: PaddingValues) {
                 onDragStart = { pointerInputChange ->
                     motionEvent = MotionEvent.Down
                     currentPosition = pointerInputChange.position
-                    pointerInputChange.consumeDownChange()
+                    pointerInputChange.consume()
 
                 },
                 onDrag = { pointerInputChange ->
@@ -118,12 +118,12 @@ fun DrawingApp(paddingValues: PaddingValues) {
                         }
                         currentPath.translate(change)
                     }
-                    pointerInputChange.consumePositionChange()
+                    pointerInputChange.consume()
 
                 },
                 onDragEnd = { pointerInputChange ->
                     motionEvent = MotionEvent.Up
-                    pointerInputChange.consumeDownChange()
+                    pointerInputChange.consume()
                 }
             )
 
@@ -142,7 +142,7 @@ fun DrawingApp(paddingValues: PaddingValues) {
                 MotionEvent.Move -> {
 
                     if (drawMode != DrawMode.Touch) {
-                        currentPath.quadraticBezierTo(
+                        currentPath.quadraticTo(
                             previousPosition.x,
                             previousPosition.y,
                             (previousPosition.x + currentPosition.x) / 2,
