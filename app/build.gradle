@@ -70,6 +70,8 @@ kotlin {
                 implementation 'androidx.test.services:test-services:1.5.0'
                 implementation 'androidx.test.espresso:espresso-core:3.6.1'
                 implementation "androidx.compose.ui:ui-test-junit4:$compose_version"
+                implementation 'androidx.fragment:fragment-testing:1.8.5'
+                implementation 'androidx.navigation:navigation-testing:2.8.5'
                 implementation 'io.mockk:mockk-android:1.13.9'
                 implementation 'com.google.truth:truth:1.4.4'
             }
