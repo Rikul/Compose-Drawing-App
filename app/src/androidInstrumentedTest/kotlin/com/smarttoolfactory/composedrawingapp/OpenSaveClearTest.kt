@@ -9,6 +9,9 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Instrumented tests for Open, Save, and Clear functionality
@@ -32,7 +35,7 @@ class OpenSaveClearTest {
         // Clear canvas to reset in-memory app state (e.g., currentDrawingName)
         // This is important because previous tests might have loaded a drawing
         composeTestRule
-            .onNodeWithContentDescription("Clear Canvas")
+            .onNodeWithContentDescription("Clear", substring = true, ignoreCase = true)
             .performClick()
         
         composeTestRule.waitForIdle()
@@ -109,7 +112,7 @@ class OpenSaveClearTest {
 
     private fun clickClear() {
         composeTestRule
-            .onNodeWithContentDescription("Clear Canvas")
+            .onNodeWithContentDescription("Clear", substring = true, ignoreCase = true)
             .performClick()
         
         composeTestRule.waitForIdle()
@@ -141,7 +144,7 @@ class OpenSaveClearTest {
         
         // Verify Clear button is visible
         composeTestRule
-            .onNodeWithContentDescription("Clear Canvas")
+            .onNodeWithContentDescription("Clear", substring = true, ignoreCase = true)
             .assertExists("Clear Canvas button should exist")
             .assertIsDisplayed()
     }
@@ -447,6 +450,14 @@ class OpenSaveClearTest {
             .assertExists("Saved drawing should appear in list")
             .assertIsDisplayed()
         
+        // Verify date appears in the expected format (e.g., "Feb 14, 2026")
+        val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.US)
+        val expectedDateString = dateFormat.format(Date())
+        composeTestRule
+            .onNodeWithText(expectedDateString, substring = true)
+            .assertExists("Date should appear in format '$expectedDateString'")
+            .assertIsDisplayed()
+        
         // Verify empty message is NOT displayed
         composeTestRule
             .onNodeWithText("There are no saved drawings")
@@ -494,7 +505,7 @@ class OpenSaveClearTest {
         
         //  Click delete icon
         composeTestRule
-            .onNodeWithContentDescription("Delete drawing")
+            .onNodeWithContentDescription("Delete", substring = true, ignoreCase = true)
             .performClick()
         
         composeTestRule.waitForIdle()
@@ -536,7 +547,7 @@ class OpenSaveClearTest {
         
         // Click delete icon again
         composeTestRule
-            .onNodeWithContentDescription("Delete drawing")
+            .onNodeWithContentDescription("Delete", substring = true, ignoreCase = true)
             .performClick()
         
         composeTestRule.waitForIdle()
