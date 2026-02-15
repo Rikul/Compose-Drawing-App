@@ -2,13 +2,22 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.multiplatform'
     id 'org.jetbrains.kotlin.plugin.compose'
+    id 'app.cash.sqldelight'
+}
+
+sqldelight {
+  databases {
+    create("Database") {
+      packageName.set("com.smarttoolfactory.composedrawingapp.data")
+    }
+  }
 }
 
 kotlin {
     androidTarget {
         compilations.all {
             kotlinOptions {
-                jvmTarget = '1.8'
+                jvmTarget = '17'
             }
         }
     }
@@ -31,11 +40,16 @@ kotlin {
                 implementation "androidx.compose.ui:ui-tooling-preview:$compose_version"
 
                 implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.4'
+                implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.4'
                 implementation 'androidx.activity:activity-compose:1.9.2'
 
                 // Accompanist for System UI Controller and Insets
                 implementation "com.google.accompanist:accompanist-systemuicontroller:0.28.0"
                 implementation "com.google.accompanist:accompanist-insets:0.28.0"
+
+                implementation "app.cash.sqldelight:android-driver:2.0.2"
+                implementation "app.cash.sqldelight:coroutines-extensions:2.0.2"
+                implementation "com.google.code.gson:gson:2.10.1"
             }
         }
         
@@ -49,7 +63,11 @@ kotlin {
         
         androidInstrumentedTest {
             dependencies {
-                implementation 'androidx.test.ext:junit:1.2.1'
+                implementation 'androidx.test:core:1.5.0'
+                implementation 'androidx.test:runner:1.5.2'
+                implementation 'androidx.test:rules:1.5.0'
+                implementation 'androidx.test.ext:junit:1.1.5'
+                implementation 'androidx.test.services:test-services:1.5.0'
                 implementation 'androidx.test.espresso:espresso-core:3.6.1'
                 implementation "androidx.compose.ui:ui-test-junit4:$compose_version"
                 implementation 'io.mockk:mockk-android:1.13.9'
@@ -83,8 +101,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     buildFeatures {
         compose true
